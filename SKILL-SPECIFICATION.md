@@ -1,7 +1,7 @@
 # SKILL Specification
 
-> **Version**: 3.0.0
-> **Date**: 2026-04-02
+> **Version**: 3.1.0
+> **Date**: 2026-05-18
 > **Reference**: [Agent Skills Specification](https://agentskills.io/specification)
 
 ---
@@ -18,12 +18,24 @@ A skill is a **directory** containing at minimum a `SKILL.md` file:
 
 ```
 skill-name/
-├── SKILL.md          # Required: YAML frontmatter + Markdown instructions
-├── scripts/          # Optional: executable code
-├── references/       # Optional: additional documentation
-├── assets/           # Optional: templates, data, images
+├── SKILL.md             # Required: YAML frontmatter + Markdown instructions (English, LLM reads)
+├── SKILL.zh.md          # Optional: Chinese content (LLM reads)
+├── skill.meta.yaml      # Optional: metadata for indexer/CLI (not read by LLM)
+├── scripts/             # Optional: executable code
+├── references/          # Optional: additional documentation
+├── assets/              # Optional: templates, data, images
 └── ...
 ```
+
+### 2.1 File Separation Principle
+
+| File | Purpose | Reader |
+|------|---------|--------|
+| `SKILL.md` | English content for LLM | LLM |
+| `SKILL.zh.md` | Chinese content for LLM | LLM |
+| `skill.meta.yaml` | All metadata fields | Indexer / CLI / API |
+
+**Why separate?** LLM reads only the content files (SKILL.md / SKILL.zh.md). Metadata like `category`, `cognitive_phase`, `triggers`, `name_zh`, etc. are stored in `skill.meta.yaml` to save tokens. The indexer reads metadata without parsing markdown content.
 
 ---
 
@@ -43,6 +55,8 @@ description: What this       ← Required (1-1024 chars)
 1. Step-by-step guidance
 2. ...
 ```
+
+**Note**: `SKILL.md` frontmatter only contains the core fields required by [Agent Skills](https://agentskills.io/specification): `name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`. BaiZe-specific fields (`category`, `cognitive_phase`, `triggers`, i18n fields, etc.) go into `skill.meta.yaml`.
 
 ---
 
@@ -87,7 +101,96 @@ forms, or document extraction."
 
 ---
 
-## 5. Body Content
+## 5. skill.meta.yaml Format (BaiZe Metadata)
+
+The `skill.meta.yaml` file stores BaiZe-specific metadata fields. It is read by the indexer/CLI and is **not** parsed by the LLM.
+
+```yaml
+# BaiZe Skill Metadata
+# Read by indexer/CLI only — LLM does not read this file
+
+# === Identity & Version ===
+name: code-generate
+version: "1.0.0"
+
+# === i18n Fields ===
+name_key: skills.code-generate.name
+name_zh: 代码生成
+name_en: code-generate
+description_key: skills.code-generate.description
+description_zh: "根据技术规范自动生成代码及对应测试用例。"
+description_en: "Automatically generate code and corresponding tests based on technical specifications."
+
+# === Classification & Cognitive Phase ===
+category: code                            # code|quality|test|security|doc|infra|spec|project|tooling|internet|domain|process|loop|framework|system
+cognitive_phase: executor                # observer|strategist|executor|critic
+
+# === Layer & Origin ===
+layer: system                             # system|user
+origin: BaiZe                              # GSD|ECC|Superpowers|Ralph|Meta|BaiZe
+
+# === MCP Configuration ===
+mcp_server: null                          # MCP server identifier (if any)
+mcp_tools: []                              # MCP tool list
+
+# === Triggers & Capabilities ===
+triggers:                                   # Trigger keyword list
+  - "project-create"
+  - "feature-generate"
+  - "code-generation"
+
+capabilities:                               # Capability list
+  - "code-generation"
+  - "test-generation"
+
+commands: []                                # CLI dependencies
+
+# === Optional Fields ===
+compatibility: null
+allowed_tools: []
+metadata: {}
+```
+
+### 5.1 Category Values
+
+| Value | Description |
+|-------|-------------|
+| `code` | Code generation, implementation |
+| `quality` | Code quality, linting, review |
+| `test` | Test generation, validation |
+| `security` | Security scanning, vulnerability assessment |
+| `doc` | Documentation writing |
+| `infra` | Infrastructure, deployment, Docker, K8s |
+| `spec` | Requirements, specifications |
+| `project` | Project scaffolding, templates |
+| `tooling` | Tool generation, build scripts |
+| `internet` | Web scraping, browser automation, search |
+| `domain` | Domain-specific (medical, finance, etc.) |
+| `process` | Workflow, pipeline orchestration |
+| `loop` | Iteration, feedback loops |
+| `framework` | Framework-specific skills |
+| `system` | System-level, meta skills |
+
+### 5.2 Cognitive Phase Values
+
+| Value | Description |
+|-------|-------------|
+| `observer` | Analyzing, researching, monitoring |
+| `strategist` | Planning, designing, roadmapping |
+| `executor` | Performing actions, generating code |
+| `critic` | Reviewing, evaluating, providing feedback |
+
+### 5.3 Backward Compatibility
+
+If `skill.meta.yaml` does not exist, the indexer infers missing fields from `SKILL.md` frontmatter:
+- `category` → inferred from `name` + `description` keywords
+- `cognitive_phase` → inferred from `description` keywords
+- `triggers` → inferred from `name` + `description` keywords
+- `name_zh`, `description_zh` → empty (no Chinese content)
+
+---
+
+## 6. Body Content
 
 The Markdown body after frontmatter contains skill instructions. **No format restrictions** — write whatever helps agents perform the task effectively.
 
@@ -98,7 +201,7 @@ The Markdown body after frontmatter contains skill instructions. **No format res
 
 ---
 
-## 6. Optional Directories
+## 7. Optional Directories
 
 | Directory | Purpose |
 |-----------|---------|
@@ -108,7 +211,7 @@ The Markdown body after frontmatter contains skill instructions. **No format res
 
 ---
 
-## 7. Progressive Disclosure
+## 8. Progressive Disclosure
 
 Structure skills for efficient context use:
 
@@ -122,7 +225,7 @@ Structure skills for efficient context use:
 
 ---
 
-## 8. File References
+## 9. File References
 
 Use relative paths from the skill root:
 
@@ -137,7 +240,7 @@ Keep file references **one level deep** from `SKILL.md`. Avoid deeply nested ref
 
 ---
 
-## 9. Validation
+## 10. Validation
 
 Use the `skills-ref` reference library to validate:
 
@@ -149,9 +252,9 @@ This checks that frontmatter is valid and follows all naming conventions.
 
 ---
 
-## 10. Quick Reference
+## 11. Quick Reference
 
-### Frontmatter Fields
+### SKILL.md Frontmatter Fields (LLM reads)
 
 | Field | Required |
 |-------|:--------:|
@@ -162,11 +265,35 @@ This checks that frontmatter is valid and follows all naming conventions.
 | `metadata` | No |
 | `allowed-tools` | No |
 
+### skill.meta.yaml Fields (Indexer/CLI reads)
+
+| Field | Description |
+|-------|-------------|
+| `name` | Skill name |
+| `version` | Version string |
+| `name_key` | i18n key for name |
+| `name_zh` | Chinese name |
+| `name_en` | English name |
+| `description_key` | i18n key for description |
+| `description_zh` | Chinese description |
+| `description_en` | English description |
+| `category` | Skill category |
+| `cognitive_phase` | Cognitive phase |
+| `layer` | system / user |
+| `origin` | Origin source |
+| `mcp_server` | MCP server identifier |
+| `mcp_tools` | MCP tool list |
+| `triggers` | Trigger keywords |
+| `capabilities` | Capability list |
+| `commands` | CLI dependencies |
+
 ### Directory Structure
 
 ```
 skill-name/               # kebab-case
-├── SKILL.md             # required entry point
+├── SKILL.md             # required: English content for LLM
+├── SKILL.zh.md          # optional: Chinese content for LLM
+├── skill.meta.yaml      # optional: BaiZe metadata for indexer
 ├── scripts/             # optional: executables
 ├── references/          # optional: on-demand docs
 └── assets/              # optional: static resources
@@ -174,6 +301,6 @@ skill-name/               # kebab-case
 
 ---
 
-**Document Version**: 3.0.0
-**Last Updated**: 2026-04-02
+**Document Version**: 3.1.0
+**Last Updated**: 2026-05-18
 **Reference**: [Agent Skills Specification](https://agentskills.io/specification)

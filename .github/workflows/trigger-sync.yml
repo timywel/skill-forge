@@ -1,0 +1,22 @@
+name: Trigger baize-loop sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'SKILL-SPECIFICATION.md'
+      - 'SKILL-SPECIFICATION.zh.md'
+      - 'pyproject.toml'
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger baize-loop sync
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.BAIZE_BOT_TOKEN }}
+          repository: timywel/baize-loop
+          event-type: sync-skill-forge
